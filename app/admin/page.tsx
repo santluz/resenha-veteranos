@@ -144,15 +144,15 @@ function HighlightsSection() {
   const vRef = useRef<HTMLInputElement>(null);
   const load = () => getHighlights().then(setList);
   useEffect(() => { load(); }, []);
-  const handleAdd = async (e: React.FormEvent) => { e.preventDefault(); if (list.length >= 4) { alert("Máximo 4"); return; } setLoading(true); let f = { ...form }; if (!useYt && vf) { setProg(1); const r = await uploadToCloudinary(vf, setProg); f = { ...f, videoUrl: r.url, youtubeId: "" }; } await addHighlight(f); setForm({ title: "", date: "", youtubeId: "", videoUrl: "", description: "" }); setVf(null); setProg(0); await load(); setLoading(false); };
-  return <Section title={`Melhores Momentos (${list.length}/4)`} emoji="🎯">
+  const handleAdd = async (e: React.FormEvent) => { e.preventDefault(); if (list.length >= 6) { alert("Máximo 6"); return; } setLoading(true); let f = { ...form }; if (!useYt && vf) { setProg(1); const r = await uploadToCloudinary(vf, setProg); f = { ...f, videoUrl: r.url, youtubeId: "" }; } await addHighlight(f); setForm({ title: "", date: "", youtubeId: "", videoUrl: "", description: "" }); setVf(null); setProg(0); await load(); setLoading(false); };
+  return <Section title={`Melhores Momentos (${list.length}/6)`} emoji="🎯">
     <div className="flex gap-3 mb-6">{["youtube", "upload"].map(m => <button key={m} type="button" onClick={() => setUseYt(m === "youtube")} className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase border transition-colors ${(m === "youtube") === useYt ? "bg-red-600 border-red-600 text-white" : "bg-transparent border-[#333] text-[#666]"}`}>{m === "youtube" ? "📺 YouTube" : "📱 Celular"}</button>)}</div>
     <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b border-[#222]">
       <Input label="Título" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
       <Input label="Data" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} required />
       {useYt ? <div className="md:col-span-2"><Input label="ID do YouTube" value={form.youtubeId || ""} onChange={e => setForm({ ...form, youtubeId: e.target.value })} placeholder="Ex: ABC123xyz" required={useYt} /></div> : <div className="md:col-span-2"><UploadArea label="Vídeo" accept="video/*" onChange={f => setVf(f?.[0] || null)} inputRef={vRef} preview={null} />{vf && <p className="text-red-400 text-xs mt-1">✓ {vf.name}</p>}<ProgressBar pct={prog} label={`Enviando... ${prog}%`} /></div>}
       <div className="md:col-span-2"><Textarea label="Descrição" value={form.description} rows={2} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
-      <div><SaveBtn loading={loading} label={list.length >= 4 ? "Limite atingido" : "Adicionar"} /></div>
+      <div><SaveBtn loading={loading} label={list.length >= 6 ? "Limite atingido" : "Adicionar"} /></div>
     </form>
     <div className="space-y-3">{list.length === 0 && <p className="text-[#555] text-sm">Nenhum highlight.</p>}{list.map(h => <div key={h.id} className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#1C1C1C]"><div><p className="text-white font-semibold text-sm">{h.title}</p><p className="text-[#555] text-xs">{h.date}</p></div><button onClick={() => { if (confirm("Remover?")) deleteHighlight(h.id!).then(load); }} className="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Remover</button></div>)}</div>
   </Section>;

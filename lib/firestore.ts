@@ -9,7 +9,7 @@ export async function deleteResenha(id: string) { await deleteDoc(doc(db,"resenh
 export async function getInterviews(): Promise<Interview[]> { try { const q = query(collection(db,"interviews"),orderBy("date","desc"),limit(2)); const snap = await getDocs(q); return snap.docs.map(d=>({id:d.id,...d.data()} as Interview)); } catch { return []; } }
 export async function addInterview(data: Omit<Interview,"id">) { await addDoc(collection(db,"interviews"),{...data,createdAt:serverTimestamp()}); }
 export async function deleteInterview(id: string) { await deleteDoc(doc(db,"interviews",id)); }
-export async function getHighlights(): Promise<Highlight[]> { try { const q = query(collection(db,"highlights"),orderBy("date","desc"),limit(4)); const snap = await getDocs(q); return snap.docs.map(d=>({id:d.id,...d.data()} as Highlight)); } catch { return []; } }
+export async function getHighlights(): Promise<Highlight[]> { try { const q = query(collection(db,"highlights"),orderBy("date","desc"),limit(6)); const snap = await getDocs(q); return snap.docs.map(d=>({id:d.id,...d.data()} as Highlight)); } catch { return []; } }
 export async function addHighlight(data: Omit<Highlight,"id">) { await addDoc(collection(db,"highlights"),{...data,createdAt:serverTimestamp()}); }
 export async function deleteHighlight(id: string) { await deleteDoc(doc(db,"highlights",id)); }
 export async function getArbitroVideos(): Promise<ArbitroVideo[]> { try { const q = query(collection(db,"arbitro"),orderBy("date","desc"),limit(2)); const snap = await getDocs(q); return snap.docs.map(d=>({id:d.id,...d.data()} as ArbitroVideo)); } catch { return []; } }
