@@ -14,12 +14,12 @@ export default function Navbar({ instagram, logoUrl, nomeGrupo }: Props) {
           <span className="text-white font-black uppercase text-lg group-hover:text-red-500 transition-colors" style={{ fontFamily: "'Bebas Neue', Impact, sans-serif" }}>Resenha</span>
         </a>
         <ul className="hidden md:flex items-center gap-5">{links.map(l => <li key={l.label}><a href={l.href} className="text-[#666] hover:text-white text-xs font-semibold uppercase tracking-widest transition-colors">{l.label}</a></li>)}</ul>
-        <a href={`https://instagram.com/${instagram}`} target="_blank" rel="noopener noreferrer" className="hidden md:inline-flex text-[#888] hover:text-[#F5C518] text-xs font-bold uppercase tracking-widest transition-colors">Instagram</a>
+        {instagram && <a href={`https://instagram.com/${instagram}`} target="_blank" rel="noopener noreferrer" className="hidden md:inline-flex text-[#888] hover:text-[#F5C518] text-xs font-bold uppercase tracking-widest transition-colors">Instagram</a>}
         <button className="md:hidden text-[#888] hover:text-white p-1" onClick={() => setMenuOpen(o => !o)}>
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} /></svg>
         </button>
       </nav>
-      {menuOpen && <div className="md:hidden bg-[#0D0D0D]/98 backdrop-blur-md border-b border-[#1C1C1C]"><ul className="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-3">{links.map(l => <li key={l.label}><a href={l.href} onClick={() => setMenuOpen(false)} className="text-[#888] hover:text-white text-sm font-semibold uppercase block py-2 border-b border-[#1C1C1C] last:border-0">{l.label}</a></li>)}<li><a href={`https://instagram.com/${instagram}`} target="_blank" rel="noopener noreferrer" className="text-[#888] hover:text-[#F5C518] text-sm font-semibold uppercase block py-2">@{instagram}</a></li></ul></div>}
+      {menuOpen && <div className="md:hidden bg-[#0D0D0D]/98 backdrop-blur-md border-b border-[#1C1C1C]"><ul className="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-3">{links.map(l => <li key={l.label}><a href={l.href} onClick={() => setMenuOpen(false)} className="text-[#888] hover:text-white text-sm font-semibold uppercase block py-2 border-b border-[#1C1C1C] last:border-0">{l.label}</a></li>)}<li>{instagram && <a href={`https://instagram.com/${instagram}`} target="_blank" rel="noopener noreferrer" className="text-[#888] hover:text-[#F5C518] text-sm font-semibold uppercase block py-2">@{instagram}</a>}</li></ul></div>}
     </header>
   );
 }

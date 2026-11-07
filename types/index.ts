@@ -5,3 +5,4 @@ export interface LatestResenha { id?: string; youtubeId?: string; videoUrl?: str
 export interface GalleryPhoto { id?: string; src: string; alt: string; date: string; }
 export interface NextMatch { date: string; time: string; location: string; }
 export interface SiteConfig { instagram: string; logoUrl?: string; comunicado?: string; comunicadoAtivo?: boolean; primaryColor?: string; nomeGrupo?: string; }
+export interface GrupoInfo { slug: string; nome: string; }

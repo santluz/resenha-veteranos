@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getLatestResenha, saveResenha, deleteResenha, getInterviews, addInterview, deleteInterview, getHighlights, addHighlight, deleteHighlight, getArbitroVideos, addArbitroVideo, deleteArbitroVideo, getGallery, addPhoto, deletePhoto, getNextMatch, saveNextMatch, getSiteConfig, saveSiteConfig } from "@/lib/firestore";
+import { getLatestResenha, saveResenha, deleteResenha, getInterviews, addInterview, deleteInterview, getHighlights, addHighlight, deleteHighlight, getArbitroVideos, addArbitroVideo, deleteArbitroVideo, getGallery, addPhoto, deletePhoto, getNextMatch, saveNextMatch, getSiteConfig, saveSiteConfig, GRUPO_PADRAO, listGrupos, criarGrupo, slugify, slugValido } from "@/lib/firestore";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { comprimirImagem } from "@/lib/imageUtils";
 import { extractDominantColor } from "@/lib/extractColor";
-import type { Interview, Highlight, ArbitroVideo, LatestResenha, GalleryPhoto, NextMatch, SiteConfig } from "@/types";
+import type { Interview, Highlight, ArbitroVideo, LatestResenha, GalleryPhoto, NextMatch, SiteConfig, GrupoInfo } from "@/types";
 
 function ProgressBar({ pct, label }: { pct: number; label?: string }) { if (pct <= 0 || pct >= 100) return null; return <div className="mt-2"><div className="w-full bg-[#222] rounded-full h-2"><div className="bg-red-600 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} /></div><p className="text-[#555] text-xs mt-1">{label || `${pct}%`}</p></div>; }
 
@@ -31,18 +31,18 @@ function UploadArea({ label, accept, multiple, onChange, preview, inputRef }: { 
 }
 
 // ─── Identidade do Grupo ───────────────────────────────────────────────────────
-function ConfigSection() {
+function ConfigSection({ slug }: { slug: string }) {
   const [config, setConfig] = useState<SiteConfig>({ instagram: "", logoUrl: "", comunicado: "", comunicadoAtivo: false, nomeGrupo: "", primaryColor: "#dc2626" });
   const [loading, setLoading] = useState(false); const [logoLoading, setLogoLoading] = useState(false); const [extracting, setExtracting] = useState(false); const [saved, setSaved] = useState(false); const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { getSiteConfig().then(c => { setConfig({ primaryColor: "#dc2626", nomeGrupo: "", ...c }); if (c.logoUrl) setLogoPreview(c.logoUrl); }); }, []);
+  useEffect(() => { getSiteConfig(slug).then(c => { setConfig({ primaryColor: "#dc2626", nomeGrupo: "", ...c }); if (c.logoUrl) setLogoPreview(c.logoUrl); }); }, []);
 
   const handleLogo = async (files: FileList | null) => {
     const f = files?.[0]; if (!f) return;
     setLogoLoading(true);
     setLogoPreview(URL.createObjectURL(f));
     const comp = await comprimirImagem(f, 400);
-    const r = await uploadToCloudinary(comp);
+    const r = await uploadToCloudinary(comp, undefined, slug);
     setExtracting(true);
     try { const cor = await extractDominantColor(r.url); setConfig(p => ({ ...p, logoUrl: r.url, primaryColor: cor.hex })); }
     catch { setConfig(p => ({ ...p, logoUrl: r.url })); }
@@ -51,7 +51,7 @@ function ConfigSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true);
-    await saveSiteConfig(config);
+    await saveSiteConfig(config, slug);
     setLoading(false); setSaved(true); setTimeout(() => setSaved(false), 3000);
   };
 
@@ -113,13 +113,13 @@ function ConfigSection() {
 }
 
 // ─── Última Entrevista ─────────────────────────────────────────────────────────
-function ResenhaSection() {
+function ResenhaSection({ slug }: { slug: string }) {
   const [data, setData] = useState<LatestResenha>({ youtubeId: "", title: "", date: "", description: "", matchStats: { goals: "", opponent: "", location: "" } });
   const [resenhaId, setResenhaId] = useState<string | null>(null); const [videoFile, setVideoFile] = useState<File | null>(null); const [progress, setProgress] = useState(0); const [loading, setLoading] = useState(false); const [saved, setSaved] = useState(false); const [deleting, setDeleting] = useState(false); const [useYt, setUseYt] = useState(true);
   const videoRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { getLatestResenha().then(r => { if (r) { setData(r); setUseYt(!r.videoUrl); setResenhaId((r as any).id || null); } }); }, []);
-  const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setLoading(true); let d = { ...data }; if (!useYt && videoFile) { setProgress(1); const r = await uploadToCloudinary(videoFile, setProgress); d = { ...d, youtubeId: "", videoUrl: r.url }; } await saveResenha(d, resenhaId || undefined); setProgress(0); setVideoFile(null); setLoading(false); setSaved(true); setTimeout(() => setSaved(false), 2000); };
-  const handleDelete = async () => { if (!confirm("Remover?")) return; if (!resenhaId) return; setDeleting(true); await deleteResenha(resenhaId); setData({ youtubeId: "", title: "", date: "", description: "", matchStats: { goals: "", opponent: "", location: "" } }); setResenhaId(null); setDeleting(false); };
+  useEffect(() => { getLatestResenha(slug).then(r => { if (r) { setData(r); setUseYt(!r.videoUrl); setResenhaId((r as any).id || null); } }); }, []);
+  const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setLoading(true); let d = { ...data }; if (!useYt && videoFile) { setProgress(1); const r = await uploadToCloudinary(videoFile, setProgress, slug); d = { ...d, youtubeId: "", videoUrl: r.url }; } await saveResenha(d, resenhaId || undefined, slug); setProgress(0); setVideoFile(null); setLoading(false); setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  const handleDelete = async () => { if (!confirm("Remover?")) return; if (!resenhaId) return; setDeleting(true); await deleteResenha(resenhaId, slug); setData({ youtubeId: "", title: "", date: "", description: "", matchStats: { goals: "", opponent: "", location: "" } }); setResenhaId(null); setDeleting(false); };
   const temConteudo = !!resenhaId;
   return <Section title="Última Entrevista" emoji="🎬">
     {temConteudo && <div className="mb-6 bg-[#0D0D0D] border border-[#1C1C1C] rounded-xl p-4"><div className="flex items-center justify-between gap-4"><div><p className="text-[#555] text-xs uppercase mb-1">Atual</p><p className="text-white font-semibold text-sm">{data.title}</p><p className="text-[#555] text-xs mt-1">{data.date} · {data.videoUrl ? "📱 próprio" : `📺 ${data.youtubeId}`}</p></div><button onClick={handleDelete} disabled={deleting} className="bg-red-600/10 hover:bg-red-600 border border-red-600/50 text-red-500 hover:text-white text-xs font-bold uppercase px-4 py-2.5 rounded-lg transition-all disabled:opacity-50">{deleting ? "Removendo..." : "🗑 Deletar"}</button></div></div>}
@@ -138,13 +138,13 @@ function ResenhaSection() {
 }
 
 // ─── Highlights ────────────────────────────────────────────────────────────────
-function HighlightsSection() {
+function HighlightsSection({ slug }: { slug: string }) {
   const [list, setList] = useState<Highlight[]>([]); const [form, setForm] = useState<Omit<Highlight, "id">>({ title: "", date: "", youtubeId: "", videoUrl: "", description: "" });
   const [useYt, setUseYt] = useState(true); const [vf, setVf] = useState<File | null>(null); const [prog, setProg] = useState(0); const [loading, setLoading] = useState(false);
   const vRef = useRef<HTMLInputElement>(null);
-  const load = () => getHighlights().then(setList);
+  const load = () => getHighlights(slug).then(setList);
   useEffect(() => { load(); }, []);
-  const handleAdd = async (e: React.FormEvent) => { e.preventDefault(); if (list.length >= 6) { alert("Máximo 6"); return; } setLoading(true); let f = { ...form }; if (!useYt && vf) { setProg(1); const r = await uploadToCloudinary(vf, setProg); f = { ...f, videoUrl: r.url, youtubeId: "" }; } await addHighlight(f); setForm({ title: "", date: "", youtubeId: "", videoUrl: "", description: "" }); setVf(null); setProg(0); await load(); setLoading(false); };
+  const handleAdd = async (e: React.FormEvent) => { e.preventDefault(); if (list.length >= 6) { alert("Máximo 6"); return; } setLoading(true); let f = { ...form }; if (!useYt && vf) { setProg(1); const r = await uploadToCloudinary(vf, setProg, slug); f = { ...f, videoUrl: r.url, youtubeId: "" }; } await addHighlight(f, slug); setForm({ title: "", date: "", youtubeId: "", videoUrl: "", description: "" }); setVf(null); setProg(0); await load(); setLoading(false); };
   return <Section title={`Melhores Momentos (${list.length}/6)`} emoji="🎯">
     <div className="flex gap-3 mb-6">{["youtube", "upload"].map(m => <button key={m} type="button" onClick={() => setUseYt(m === "youtube")} className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase border transition-colors ${(m === "youtube") === useYt ? "bg-red-600 border-red-600 text-white" : "bg-transparent border-[#333] text-[#666]"}`}>{m === "youtube" ? "📺 YouTube" : "📱 Celular"}</button>)}</div>
     <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b border-[#222]">
@@ -154,18 +154,18 @@ function HighlightsSection() {
       <div className="md:col-span-2"><Textarea label="Descrição" value={form.description} rows={2} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
       <div><SaveBtn loading={loading} label={list.length >= 6 ? "Limite atingido" : "Adicionar"} /></div>
     </form>
-    <div className="space-y-3">{list.length === 0 && <p className="text-[#555] text-sm">Nenhum highlight.</p>}{list.map(h => <div key={h.id} className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#1C1C1C]"><div><p className="text-white font-semibold text-sm">{h.title}</p><p className="text-[#555] text-xs">{h.date}</p></div><button onClick={() => { if (confirm("Remover?")) deleteHighlight(h.id!).then(load); }} className="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Remover</button></div>)}</div>
+    <div className="space-y-3">{list.length === 0 && <p className="text-[#555] text-sm">Nenhum highlight.</p>}{list.map(h => <div key={h.id} className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#1C1C1C]"><div><p className="text-white font-semibold text-sm">{h.title}</p><p className="text-[#555] text-xs">{h.date}</p></div><button onClick={() => { if (confirm("Remover?")) deleteHighlight(h.id!, slug).then(load); }} className="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Remover</button></div>)}</div>
   </Section>;
 }
 
 // ─── Visão do Árbitro ──────────────────────────────────────────────────────────
-function ArbitroSection() {
+function ArbitroSection({ slug }: { slug: string }) {
   const [list, setList] = useState<ArbitroVideo[]>([]); const [form, setForm] = useState<Omit<ArbitroVideo, "id">>({ title: "", date: "", videoUrl: "", description: "" });
   const [vf, setVf] = useState<File | null>(null); const [tf, setTf] = useState<File | null>(null); const [tp, setTp] = useState<string | null>(null); const [prog, setProg] = useState(0); const [loading, setLoading] = useState(false);
   const vRef = useRef<HTMLInputElement>(null); const tRef = useRef<HTMLInputElement>(null);
-  const load = () => getArbitroVideos().then(setList);
+  const load = () => getArbitroVideos(slug).then(setList);
   useEffect(() => { load(); }, []);
-  const handleAdd = async (e: React.FormEvent) => { e.preventDefault(); if (list.length >= 2) { alert("Máximo 2"); return; } setLoading(true); let f = { ...form }; if (vf) { setProg(1); const r = await uploadToCloudinary(vf, setProg); f = { ...f, videoUrl: r.url }; } if (tf) { const comp = await comprimirImagem(tf); const r = await uploadToCloudinary(comp); f = { ...f, thumbnail: r.url }; } await addArbitroVideo(f); setForm({ title: "", date: "", videoUrl: "", description: "" }); setVf(null); setTf(null); setTp(null); setProg(0); await load(); setLoading(false); };
+  const handleAdd = async (e: React.FormEvent) => { e.preventDefault(); if (list.length >= 2) { alert("Máximo 2"); return; } setLoading(true); let f = { ...form }; if (vf) { setProg(1); const r = await uploadToCloudinary(vf, setProg, slug); f = { ...f, videoUrl: r.url }; } if (tf) { const comp = await comprimirImagem(tf); const r = await uploadToCloudinary(comp, undefined, slug); f = { ...f, thumbnail: r.url }; } await addArbitroVideo(f, slug); setForm({ title: "", date: "", videoUrl: "", description: "" }); setVf(null); setTf(null); setTp(null); setProg(0); await load(); setLoading(false); };
   return <Section title={`Visão do Árbitro (${list.length}/2)`} emoji="👁">
     <p className="text-[#555] text-sm -mt-4 mb-6">Vídeos verticais da câmera de ação no peito do árbitro.</p>
     <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b border-[#222]">
@@ -176,18 +176,18 @@ function ArbitroSection() {
       <div className="md:col-span-2"><Textarea label="Descrição (opcional)" value={form.description || ""} rows={2} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
       <div><SaveBtn loading={loading} label={list.length >= 2 ? "Limite atingido" : "Adicionar Vídeo"} /></div>
     </form>
-    <div className="space-y-3">{list.length === 0 && <p className="text-[#555] text-sm">Nenhum vídeo do árbitro.</p>}{list.map(v => <div key={v.id} className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#1C1C1C]"><div className="flex items-center gap-3">{v.thumbnail && <img src={v.thumbnail} alt="" className="w-10 h-14 object-cover rounded" />}<div><p className="text-white font-semibold text-sm">{v.title}</p><p className="text-[#555] text-xs">{v.date}</p></div></div><button onClick={() => { if (confirm("Remover?")) deleteArbitroVideo(v.id!).then(load); }} className="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Remover</button></div>)}</div>
+    <div className="space-y-3">{list.length === 0 && <p className="text-[#555] text-sm">Nenhum vídeo do árbitro.</p>}{list.map(v => <div key={v.id} className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#1C1C1C]"><div className="flex items-center gap-3">{v.thumbnail && <img src={v.thumbnail} alt="" className="w-10 h-14 object-cover rounded" />}<div><p className="text-white font-semibold text-sm">{v.title}</p><p className="text-[#555] text-xs">{v.date}</p></div></div><button onClick={() => { if (confirm("Remover?")) deleteArbitroVideo(v.id!, slug).then(load); }} className="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Remover</button></div>)}</div>
   </Section>;
 }
 
 // ─── Entrevistas ───────────────────────────────────────────────────────────────
-function InterviewsSection() {
+function InterviewsSection({ slug }: { slug: string }) {
   const [list, setList] = useState<Interview[]>([]); const [form, setForm] = useState<Omit<Interview, "id">>({ name: "", role: "", date: "", thumbnail: "", youtubeId: "", description: "" });
   const [useYt, setUseYt] = useState(true); const [vf, setVf] = useState<File | null>(null); const [tf, setTf] = useState<File | null>(null); const [tp, setTp] = useState<string | null>(null); const [prog, setProg] = useState(0); const [loading, setLoading] = useState(false);
   const vRef = useRef<HTMLInputElement>(null); const tRef = useRef<HTMLInputElement>(null);
-  const load = () => getInterviews().then(setList);
+  const load = () => getInterviews(slug).then(setList);
   useEffect(() => { load(); }, []);
-  const handleAdd = async (e: React.FormEvent) => { e.preventDefault(); if (list.length >= 2) { alert("Máximo 2"); return; } setLoading(true); let f = { ...form }; if (!useYt && vf) { setProg(1); const r = await uploadToCloudinary(vf, setProg); f = { ...f, youtubeId: "", videoUrl: r.url } as any; } if (tf) { const comp = await comprimirImagem(tf); const r = await uploadToCloudinary(comp); f = { ...f, thumbnail: r.url }; } else if (useYt && form.youtubeId) { f = { ...f, thumbnail: `https://img.youtube.com/vi/${form.youtubeId}/hqdefault.jpg` }; } await addInterview(f); setForm({ name: "", role: "", date: "", thumbnail: "", youtubeId: "", description: "" }); setVf(null); setTf(null); setTp(null); setProg(0); await load(); setLoading(false); };
+  const handleAdd = async (e: React.FormEvent) => { e.preventDefault(); if (list.length >= 2) { alert("Máximo 2"); return; } setLoading(true); let f = { ...form }; if (!useYt && vf) { setProg(1); const r = await uploadToCloudinary(vf, setProg, slug); f = { ...f, youtubeId: "", videoUrl: r.url } as any; } if (tf) { const comp = await comprimirImagem(tf); const r = await uploadToCloudinary(comp, undefined, slug); f = { ...f, thumbnail: r.url }; } else if (useYt && form.youtubeId) { f = { ...f, thumbnail: `https://img.youtube.com/vi/${form.youtubeId}/hqdefault.jpg` }; } await addInterview(f, slug); setForm({ name: "", role: "", date: "", thumbnail: "", youtubeId: "", description: "" }); setVf(null); setTf(null); setTp(null); setProg(0); await load(); setLoading(false); };
   return <Section title={`Entrevistas (${list.length}/2)`} emoji="🎙">
     <div className="flex gap-3 mb-6">{["youtube", "upload"].map(m => <button key={m} type="button" onClick={() => setUseYt(m === "youtube")} className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase border transition-colors ${(m === "youtube") === useYt ? "bg-red-600 border-red-600 text-white" : "bg-transparent border-[#333] text-[#666]"}`}>{m === "youtube" ? "📺 YouTube" : "📱 Celular"}</button>)}</div>
     <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b border-[#222]">
@@ -199,19 +199,19 @@ function InterviewsSection() {
       <div className="md:col-span-2"><Textarea label="Descrição" value={form.description} rows={2} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
       <div><SaveBtn loading={loading} label="Adicionar Entrevista" /></div>
     </form>
-    <div className="space-y-3">{list.length === 0 && <p className="text-[#555] text-sm">Nenhuma entrevista.</p>}{list.map(iv => <div key={iv.id} className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#1C1C1C]"><div className="flex items-center gap-3">{iv.thumbnail && <img src={iv.thumbnail} alt="" className="w-12 h-8 object-cover rounded" />}<div><p className="text-white font-semibold text-sm">{iv.name}</p><p className="text-[#555] text-xs">{iv.role} · {iv.date}</p></div></div><button onClick={() => { if (confirm("Remover?")) deleteInterview(iv.id!).then(load); }} className="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Remover</button></div>)}</div>
+    <div className="space-y-3">{list.length === 0 && <p className="text-[#555] text-sm">Nenhuma entrevista.</p>}{list.map(iv => <div key={iv.id} className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#1C1C1C]"><div className="flex items-center gap-3">{iv.thumbnail && <img src={iv.thumbnail} alt="" className="w-12 h-8 object-cover rounded" />}<div><p className="text-white font-semibold text-sm">{iv.name}</p><p className="text-[#555] text-xs">{iv.role} · {iv.date}</p></div></div><button onClick={() => { if (confirm("Remover?")) deleteInterview(iv.id!, slug).then(load); }} className="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Remover</button></div>)}</div>
   </Section>;
 }
 
 // ─── Galeria ───────────────────────────────────────────────────────────────────
-function GallerySection() {
+function GallerySection({ slug }: { slug: string }) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]); const [files, setFiles] = useState<FileList | null>(null); const [alt, setAlt] = useState(""); const [prog, setProg] = useState(0); const [cur, setCur] = useState(0); const [loading, setLoading] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
-  const load = () => getGallery().then(setPhotos);
+  const load = () => getGallery(slug).then(setPhotos);
   useEffect(() => { load(); }, []);
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault(); if (!files || !files.length) return; setLoading(true);
-    for (let i = 0; i < files.length; i++) { setCur(i + 1); setProg(0); const comp = await comprimirImagem(files[i]); const r = await uploadToCloudinary(comp, setProg); await addPhoto({ src: r.url, alt: alt || `Foto ${i + 1}`, date: new Date().toISOString().split("T")[0] }); }
+    for (let i = 0; i < files.length; i++) { setCur(i + 1); setProg(0); const comp = await comprimirImagem(files[i]); const r = await uploadToCloudinary(comp, setProg, slug); await addPhoto({ src: r.url, alt: alt || `Foto ${i + 1}`, date: new Date().toISOString().split("T")[0] }, slug); }
     setAlt(""); setFiles(null); setProg(0); setCur(0); if (ref.current) ref.current.value = ""; await load(); setLoading(false);
   };
   return <Section title={`Galeria (${photos.length} fotos)`} emoji="📷">
@@ -223,17 +223,17 @@ function GallerySection() {
       <div><SaveBtn loading={loading} label={loading ? `Enviando ${cur}/${files?.length}...` : "Enviar Fotos"} /></div>
     </form>
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-      {photos.map(p => <div key={p.id} className="relative group aspect-square rounded-lg overflow-hidden bg-[#0D0D0D]"><img src={p.src} alt={p.alt} className="w-full h-full object-cover" /><button onClick={() => { if (confirm("Remover?")) deletePhoto(p.id!).then(load); }} className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 text-xs font-bold">Remover</button></div>)}
+      {photos.map(p => <div key={p.id} className="relative group aspect-square rounded-lg overflow-hidden bg-[#0D0D0D]"><img src={p.src} alt={p.alt} className="w-full h-full object-cover" /><button onClick={() => { if (confirm("Remover?")) deletePhoto(p.id!, slug).then(load); }} className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 text-xs font-bold">Remover</button></div>)}
       {!photos.length && <p className="text-[#555] text-sm col-span-full">Nenhuma foto.</p>}
     </div>
   </Section>;
 }
 
 // ─── Próximo Jogo ──────────────────────────────────────────────────────────────
-function NextMatchSection() {
+function NextMatchSection({ slug }: { slug: string }) {
   const [data, setData] = useState<NextMatch>({ date: "", time: "", location: "" }); const [loading, setLoading] = useState(false); const [saved, setSaved] = useState(false);
-  useEffect(() => { getNextMatch().then(m => { if (m) setData(m); }); }, []);
-  const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setLoading(true); await saveNextMatch(data); setLoading(false); setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  useEffect(() => { getNextMatch(slug).then(m => { if (m) setData(m); }); }, []);
+  const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setLoading(true); await saveNextMatch(data, slug); setLoading(false); setSaved(true); setTimeout(() => setSaved(false), 2000); };
   return <Section title="Próximo Jogo" emoji="📅"><form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
     <Input label="Data" type="date" value={data.date} onChange={e => setData({ ...data, date: e.target.value })} required />
     <Input label="Horário" type="time" value={data.time} onChange={e => setData({ ...data, time: e.target.value })} required />
@@ -242,9 +242,48 @@ function NextMatchSection() {
   </form></Section>;
 }
 
+
+// ─── Grupos e link curto ───────────────────────────────────────────────────────
+function GruposSection({ grupos, slug, onSelect, onCriado }: { grupos: GrupoInfo[]; slug: string; onSelect: (s: string) => void; onCriado: (s: string) => void }) {
+  const [nome, setNome] = useState(""); const [novoSlug, setNovoSlug] = useState(""); const [erro, setErro] = useState(""); const [loading, setLoading] = useState(false); const [copiado, setCopiado] = useState(false);
+  const link = typeof window !== "undefined" ? `${window.location.origin}/${slug}` : `/${slug}`;
+  const criar = async (e: React.FormEvent) => {
+    e.preventDefault(); setErro("");
+    const s = novoSlug.trim() || slugify(nome);
+    if (!nome.trim()) { setErro("Digite o nome do grupo."); return; }
+    if (!slugValido(s)) { setErro("O endereço deve ter de 2 a 30 letras minúsculas, números ou hífen (ex: lendas-bv)."); return; }
+    if (grupos.some(g => g.slug === s)) { setErro("Já existe um grupo com esse endereço."); return; }
+    setLoading(true);
+    try { await criarGrupo(s, nome.trim()); setNome(""); setNovoSlug(""); onCriado(s); } catch { setErro("Não foi possível criar o grupo. Tente novamente."); }
+    setLoading(false);
+  };
+  const copiar = async () => { try { await navigator.clipboard.writeText(link); setCopiado(true); setTimeout(() => setCopiado(false), 2000); } catch { window.prompt("Copie o link:", link); } };
+  return <Section title="Grupos e Link Curto" emoji="🔗">
+    <p className="text-[#555] text-sm -mt-4 mb-6">Cada grupo tem logo, cor, vídeos e fotos separados, no mesmo site. Escolha o grupo que vai editar abaixo.</p>
+    <div className="grid grid-cols-1 gap-4 mb-6">
+      <div><label className="text-[#666] text-xs uppercase tracking-widest block mb-1">Grupo em edição</label>
+        <select value={slug} onChange={e => onSelect(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#333] focus:border-red-600 rounded-lg px-4 py-2.5 text-white text-sm outline-none">
+          {grupos.map(g => <option key={g.slug} value={g.slug}>{g.nome} (/{g.slug})</option>)}
+        </select></div>
+      <div><label className="text-[#666] text-xs uppercase tracking-widest block mb-1">Link para enviar ao grupo</label>
+        <div className="flex gap-2"><div className="flex-1 bg-[#0D0D0D] border border-[#333] rounded-lg px-4 py-2.5 text-[#F5C518] text-sm truncate">{link}</div>
+          <button type="button" onClick={copiar} className="bg-[#222] hover:bg-[#333] border border-[#444] text-white text-xs font-bold uppercase px-4 rounded-lg">{copiado ? "✓ Copiado" : "Copiar"}</button></div></div>
+    </div>
+    <form onSubmit={criar} className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6 border-t border-[#222]">
+      <Input label="Novo grupo — nome" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Veteranos FC" />
+      <Input label="Endereço do link (opcional)" value={novoSlug} onChange={e => setNovoSlug(e.target.value.toLowerCase())} placeholder={slugify(nome) || "veteranos-fc"} tip="Se deixar vazio, usa o nome do grupo." />
+      {erro && <p className="text-red-400 text-xs md:col-span-2">{erro}</p>}
+      <div><SaveBtn loading={loading} label="Criar Grupo" /></div>
+    </form>
+  </Section>;
+}
+
 // ─── Página principal ──────────────────────────────────────────────────────────
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false); const [checked, setChecked] = useState(false);
+  const [grupos, setGrupos] = useState<GrupoInfo[]>([]); const [slug, setSlug] = useState(GRUPO_PADRAO);
+  const carregarGrupos = () => listGrupos().then(setGrupos);
+  useEffect(() => { if (authed) carregarGrupos(); }, [authed]);
   useEffect(() => { if (sessionStorage.getItem("admin_auth") === "1") setAuthed(true); setChecked(true); }, []);
   if (!checked) return null;
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
@@ -254,13 +293,16 @@ export default function AdminPage() {
         <div><h1 className="text-white font-black text-4xl uppercase" style={{ fontFamily: "'Bebas Neue',Impact,sans-serif" }}>⚽ Painel Admin</h1><p className="text-[#555] text-sm">Resenha do Combinado</p></div>
         <div className="flex items-center gap-4"><a href="/" className="text-[#555] hover:text-white text-sm">← Ver Site</a><button onClick={() => { sessionStorage.removeItem("admin_auth"); setAuthed(false); }} className="text-[#555] hover:text-red-400 text-sm">Sair</button></div>
       </div>
-      <ConfigSection />
-      <ResenhaSection />
-      <HighlightsSection />
-      <ArbitroSection />
-      <InterviewsSection />
-      <GallerySection />
-      <NextMatchSection />
+      <GruposSection grupos={grupos} slug={slug} onSelect={setSlug} onCriado={s => { carregarGrupos().then(() => setSlug(s)); }} />
+      <div key={slug}>
+        <ConfigSection slug={slug} />
+        <ResenhaSection slug={slug} />
+        <HighlightsSection slug={slug} />
+        <ArbitroSection slug={slug} />
+        <InterviewsSection slug={slug} />
+        <GallerySection slug={slug} />
+        <NextMatchSection slug={slug} />
+      </div>
     </div>
   </div>;
 }
