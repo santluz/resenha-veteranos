@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getLatestResenha, saveResenha, deleteResenha, getInterviews, addInterview, deleteInterview, getHighlights, addHighlight, deleteHighlight, getArbitroVideos, addArbitroVideo, deleteArbitroVideo, getGallery, addPhoto, deletePhoto, getNextMatch, saveNextMatch, getSiteConfig, saveSiteConfig, GRUPO_PADRAO, listGrupos, criarGrupo, slugify, slugValido } from "@/lib/firestore";
+import { getLatestResenha, saveResenha, deleteResenha, getInterviews, addInterview, deleteInterview, getHighlights, addHighlight, deleteHighlight, getArbitroVideos, addArbitroVideo, deleteArbitroVideo, getGallery, addPhoto, deletePhoto, getNextMatch, saveNextMatch, getSiteConfig, saveSiteConfig, GRUPO_PADRAO, listGrupos, criarGrupo, slugify, slugValido, deleteGrupo } from "@/lib/firestore";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { comprimirImagem } from "@/lib/imageUtils";
 import { extractDominantColor } from "@/lib/extractColor";
@@ -244,8 +244,8 @@ function NextMatchSection({ slug }: { slug: string }) {
 
 
 // ─── Grupos e link curto ───────────────────────────────────────────────────────
-function GruposSection({ grupos, slug, onSelect, onCriado }: { grupos: GrupoInfo[]; slug: string; onSelect: (s: string) => void; onCriado: (s: string) => void }) {
-  const [nome, setNome] = useState(""); const [novoSlug, setNovoSlug] = useState(""); const [erro, setErro] = useState(""); const [loading, setLoading] = useState(false); const [copiado, setCopiado] = useState(false);
+function GruposSection({ grupos, slug, onSelect, onCriado, onExcluido }: { grupos: GrupoInfo[]; slug: string; onSelect: (s: string) => void; onCriado: (s: string) => void; onExcluido: () => void }) {
+  const [nome, setNome] = useState(""); const [novoSlug, setNovoSlug] = useState(""); const [erro, setErro] = useState(""); const [loading, setLoading] = useState(false); const [copiado, setCopiado] = useState(false); const [excluindo, setExcluindo] = useState(false);
   const link = typeof window !== "undefined" ? `${window.location.origin}/${slug}` : `/${slug}`;
   const criar = async (e: React.FormEvent) => {
     e.preventDefault(); setErro("");
@@ -256,6 +256,13 @@ function GruposSection({ grupos, slug, onSelect, onCriado }: { grupos: GrupoInfo
     setLoading(true);
     try { await criarGrupo(s, nome.trim()); setNome(""); setNovoSlug(""); onCriado(s); } catch { setErro("Não foi possível criar o grupo. Tente novamente."); }
     setLoading(false);
+  };
+  const excluir = async () => {
+    const g = grupos.find(x => x.slug === slug);
+    if (!window.confirm(`Excluir o grupo "${g?.nome || slug}"?\n\nIsso apaga a página /${slug} e todos os vídeos, fotos e configurações dele. Não dá para desfazer.`)) return;
+    setExcluindo(true); setErro("");
+    try { await deleteGrupo(slug); onExcluido(); } catch { setErro("Não foi possível excluir o grupo. Tente novamente."); }
+    setExcluindo(false);
   };
   const copiar = async () => { try { await navigator.clipboard.writeText(link); setCopiado(true); setTimeout(() => setCopiado(false), 2000); } catch { window.prompt("Copie o link:", link); } };
   return <Section title="Grupos e Link Curto" emoji="🔗">
@@ -268,6 +275,7 @@ function GruposSection({ grupos, slug, onSelect, onCriado }: { grupos: GrupoInfo
       <div><label className="text-[#666] text-xs uppercase tracking-widest block mb-1">Link para enviar ao grupo</label>
         <div className="flex gap-2"><div className="flex-1 bg-[#0D0D0D] border border-[#333] rounded-lg px-4 py-2.5 text-[#F5C518] text-sm truncate">{link}</div>
           <button type="button" onClick={copiar} className="bg-[#222] hover:bg-[#333] border border-[#444] text-white text-xs font-bold uppercase px-4 rounded-lg">{copiado ? "✓ Copiado" : "Copiar"}</button></div></div>
+      {slug !== GRUPO_PADRAO && <div><button type="button" onClick={excluir} disabled={excluindo} className="bg-red-600/10 hover:bg-red-600 border border-red-600/50 text-red-500 hover:text-white text-xs font-bold uppercase px-4 py-2.5 rounded-lg transition-all disabled:opacity-50">{excluindo ? "Excluindo..." : "🗑 Excluir este grupo"}</button></div>}
     </div>
     <form onSubmit={criar} className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6 border-t border-[#222]">
       <Input label="Novo grupo — nome" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Veteranos FC" />
@@ -293,7 +301,7 @@ export default function AdminPage() {
         <div><h1 className="text-white font-black text-4xl uppercase" style={{ fontFamily: "'Bebas Neue',Impact,sans-serif" }}>⚽ Painel Admin</h1><p className="text-[#555] text-sm">Resenha do Combinado</p></div>
         <div className="flex items-center gap-4"><a href="/" className="text-[#555] hover:text-white text-sm">← Ver Site</a><button onClick={() => { sessionStorage.removeItem("admin_auth"); setAuthed(false); }} className="text-[#555] hover:text-red-400 text-sm">Sair</button></div>
       </div>
-      <GruposSection grupos={grupos} slug={slug} onSelect={setSlug} onCriado={s => { carregarGrupos().then(() => setSlug(s)); }} />
+      <GruposSection grupos={grupos} slug={slug} onSelect={setSlug} onCriado={s => { carregarGrupos().then(() => setSlug(s)); }} onExcluido={() => { setSlug(GRUPO_PADRAO); carregarGrupos(); }} />
       <div key={slug}>
         <ConfigSection slug={slug} />
         <ResenhaSection slug={slug} />

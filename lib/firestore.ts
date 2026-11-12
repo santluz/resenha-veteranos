@@ -29,6 +29,16 @@ export async function criarGrupo(slug: string, nome: string) {
   await setDoc(doc(db, "grupos", slug, "config", "site"), { instagram: "", nomeGrupo: nome, updatedAt: serverTimestamp() });
 }
 
+const SUBCOLECOES = ["resenhas", "interviews", "highlights", "arbitro", "gallery", "config"];
+export async function deleteGrupo(slug: string) {
+  if (ehPadrao(slug)) throw new Error("O grupo padrão não pode ser excluído.");
+  for (const nome of SUBCOLECOES) {
+    const snap = await getDocs(collection(db, "grupos", slug, nome));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+  }
+  await deleteDoc(doc(db, "grupos", slug));
+}
+
 // ─── Conteúdo (todas as funções aceitam o grupo no final) ───
 export async function getLatestResenha(slug?: string): Promise<LatestResenha | null> { try { const q = query(col("resenhas", slug), orderBy("date", "desc"), limit(1)); const snap = await getDocs(q); if (snap.empty) return null; const d = snap.docs[0]; return { id: d.id, ...d.data() } as LatestResenha; } catch { return null; } }
 export async function saveResenha(data: Omit<LatestResenha, "id">, id?: string, slug?: string) { if (id) { await updateDoc(ref("resenhas", id, slug), { ...data, updatedAt: serverTimestamp() }); } else { await addDoc(col("resenhas", slug), { ...data, createdAt: serverTimestamp() }); } }
